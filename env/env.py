@@ -21,14 +21,19 @@ class AIGCEnv(gym.Env):
         self._m = 2 # 形状参数
         self._Omega = 1 # 平均功率
         self._distance_JR = 50 # Jammer-RIS的距离
-        self._distance_AR = 50 #Alice-RIS的距离
+        self._distance_AR = 50 # Alice-RIS的距离
+        self._distance_RW = 50 # RIS-Willie的距离
         self._distance_step = 15 # 步长
         self._distance_RUk = np.array([self._distance_JR + i * self._distance_step for i in range(self._user_number)]) # RIS-Uk的距离 依次增大的
         self._path_loss_cof = -2.5 # 路径损失系数
         self._L1 = (self._distance_RUk ** self._path_loss_cof) * (self._distance_AR ** self._path_loss_cof)    # Alice-RIS-Uk的路径损失
         self._L2 = (self._distance_RUk ** self._path_loss_cof) * (self._distance_JR ** self._path_loss_cof)   # Jammer-RIS-Uk的路径损失
+        self._L3 = self.__distance_RW ** self._path_loss_cof * self._distance_JR ** self._path_loss_cof  # Jammer-RIS-Willie的路径损失
+        self._L4 = self._distance_RW ** self._path_loss_cof * self._distance_AR ** self._path_loss_cof  # Alice-RIS-Willie的路径损失
         self._interference_cof = 0  # 自干扰系数
         self._noise_variance = 10 ^(-80/10)  # 噪声方差
+        self._rate_common_lowwer = 0 # 公共消息速率下限
+        self._rate_private_lowwer = 0 # 私有消息速率下限
         self._precoder_dim = self._antanna_number*(self._user_number+1) # 预编码器维度
         # 定义观测空间
         self._observation_space = Box(shape=self.state.shape, low=0, high=1)
@@ -72,7 +77,7 @@ class AIGCEnv(gym.Env):
         reward_in.append(0)
         # 拼接所有状态
         states = np.concatenate([states1, states2, states3, states4, reward_in], axis=0)
-        self.channel_gains = np.concatenate([states1, states2, states3, states4])
+        self.channel_gains = [h_AR, h_JR, h_RW, h_RUk]
         self._laststate = states
         return states
 

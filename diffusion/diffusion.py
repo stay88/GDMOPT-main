@@ -175,7 +175,7 @@ class Diffusion(nn.Module):
         batch_size = state.shape[0]
         shape = (batch_size, self.action_dim)
         action = self.p_sample_loop(state, shape, *args, **kwargs)
-        # Clamping the actions to be between -max_action and max_action
+        # Clamping the actions to be between -max_action and max_action 限制最大动作空间
         return action.clamp_(-self.max_action, self.max_action)
         # return action
 

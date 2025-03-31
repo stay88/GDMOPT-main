@@ -1,3 +1,4 @@
+import math
 from typing import Tuple
 import numpy as np
 
@@ -163,6 +164,66 @@ def rate_uk(
     
     return rate_common_temp, rate_private_temp
 
+def AMDEP(user_number,
+          power_Jammer_max,
+          power_Alice,
+          power_common_cof,
+          L3,
+          L4)->float:
+    '''
+    计算AMDEP
+    :param user_number: 用户数量
+    :param power_Jammer_max: Jammer的最大功率
+    :param power_Alice: Alice的功率
+    :param power_common_cof: 公共消息功率分配系数
+    :param L3: Jammer-RIS-Willie的路径损失
+    :param L4: Alice-RIS-Willie的路径损失
+    :return: AMDEP
+    '''
+    n = 10000
+    mu = user_number * power_Jammer_max * L3
+    nu = (1-power_common_cof) * power_Alice * L4
+    sumf = 0
+    for i in range(1, n+1):
+        omega_i = math.pi / n
+        t_i = math.cos(math.pi * (2*i - 1) / (2 * n))
+        F_t_i = math.sqrt(1 - t_i**2) * (((1 + t_i) * (mu + nu)) / ((1 + t_i) * mu + 2 * nu)) ** user_number
+        sumf += omega_i * F_t_i
+    xi_a_star = ((mu / (mu + nu)) ** user_number) * 0.5 * sumf
+
+    return xi_a_star
+
+
+import numpy as np
+
+def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:
+    """
+    根据输入的相位数组生成NxN的RIS对角矩阵（幅度恒为1）
+    
+    :param phase_array: 一维相位数组（维度为N），单位弧度
+    :return: NxN的RIS对角矩阵，对角线元素为复数exp(j*phase)
+    """
+    # 检查输入合法性
+    if phase_array.ndim != 1:
+        raise ValueError("Input phase_array must be a 1D numpy array")
+    
+    # 生成复数（幅度为1）
+    diag_elements = np.exp(1j * phase_array)
+    
+    # 构造对角矩阵
+    ris_matrix = np.diag(diag_elements)
+    return ris_matrix
+
+def procoder(antenna_number,amplitude,phase) -> Tuple[np.ndarray, np.ndarray]:
+    '''
+    生成预编码器
+    :param amplitude: 预编码器幅度
+    :param phase: 预编码器相位
+    :return: 预编码器
+    '''
+    common_amplitude = amplitude[:antenna_number]
+    common_amplitude = common_amplitude/np.sum(common_amplitude)
+    common_phase = phase[:antenna_number]
 
 
 if __name__ == "__main__":
@@ -172,8 +233,7 @@ if __name__ == "__main__":
     Omega = 1  # 平均功率
     m = 1.5  # Nakagami形状参数
 
-    H_rayleigh = generate_rayleigh_channel(N, M, Omega)
-    H_nakagami = generate_nakagami_channel(N, M, m, Omega)
-    h = H_rayleigh.flatten().reshape(-1, 1)
-    print("Rayleigh Channel:\n", h[:3])
-    print("Nakagami Channel:\n", H_rayleigh)
+    ris = generate_RIS_random(N)
+    A = np.zeros([3,])
+    print("RIS反射单元：", A.ndim)
+    print("RIS反射单元：", A)
