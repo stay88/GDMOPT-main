@@ -28,9 +28,9 @@ def get_args():
     parser.add_argument('--algorithm', type=str, default='diffusion_opt')
     parser.add_argument('--seed', type=int, default=1) # 设置种子
     parser.add_argument('--buffer-size', type=int, default=1e6) # 1e6 经验回放缓冲区的大小
-    parser.add_argument('-e', '--epoch', type=int, default=20) # 训练的总轮数。每一轮包含多个训练步骤。
-    parser.add_argument('--step-per-epoch', type=int, default=100) # 每轮训练的步数。每一步对应一次与环境的交互。
-    parser.add_argument('--step-per-collect', type=int, default=1000) #每次收集数据的步数。通常用于决定何时更新策略
+    parser.add_argument('-e', '--epoch', type=int, default=1) # 训练的总轮数。每一轮包含多个训练步骤。
+    parser.add_argument('--step-per-epoch', type=int, default=1) # 每轮训练的步数。每一步对应一次与环境的交互。
+    parser.add_argument('--step-per-collect', type=int, default=1) #每次收集数据的步数。通常用于决定何时更新策略
     parser.add_argument('-b', '--batch-size', type=int, default=512) # 每个训练批次的样本数量。较大的批量大小可以加速训练，但需要更多的内存
     parser.add_argument('--wd', type=float, default=1e-4) # 权重衰减（Weight Decay）。用于正则化，防止过拟合。
     parser.add_argument('--gamma', type=float, default=1) # 折扣因子（Discount Factor）。控制未来奖励的重要性。值越小，对未来奖励的关注越少。
@@ -110,7 +110,7 @@ def main(args=get_args()):
         weight_decay=args.wd
     )
 
-    # Create critic
+    # Create critic 计算q值的网络
     critic = DoubleCritic(
         state_dim=args.state_shape,
         action_dim=args.action_shape

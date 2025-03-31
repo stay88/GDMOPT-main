@@ -99,16 +99,16 @@ class DiffusionOPT(BasePolicy):
             buffer: Optional[ReplayBuffer],
             **kwargs: Any
     ) -> Dict[str, Any]:
-        # If no replay buffer is provided, return an empty dictionary 如果没有提供重放缓冲区，则返回一个空字典
+        # 如果没有提供重放缓冲区，则返回一个空字典
         if buffer is None: return {}
-        self.updating = True # Indicate that the policy is being updated 标识策略正在更新
+        self.updating = True # 标识策略正在更新
 
-        # Sample a batch of transitions from replay buffer 一批次的样本数量
+        #一批次的样本数量
         batch, indices = buffer.sample(sample_size)
 
-        # Compute n-step return for the sampled transitions 计算样本转换的n步返回
+        # 计算样本转换的n步返回
         batch = self.process_fn(batch, buffer, indices)
-        # Update network parameters 更新网络参数
+        # 更新网络参数
         result = self.learn(batch, **kwargs)
         if self._lr_decay: # If learning rate decay is enabled, step the learning rate schedulers 如果启用了学习率衰减，则调整学习率调度程序
             self._actor_lr_scheduler.step()
@@ -127,7 +127,7 @@ class DiffusionOPT(BasePolicy):
         # 将观测空间state转换为PyTorch张量
         obs_ = to_torch(batch[input], device=self._device, dtype=torch.float32)
         # print(obs_)
-        # 使用actor或目标actor模型
+        # 演员网络，actor或目标actor模型
         model_ = self._actor if model == "actor" else self._target_actor
         # 传入观测空间state到模型，获取动作logits（未归一化的概率）
         logits, hidden = model_(obs_), None
@@ -136,7 +136,7 @@ class DiffusionOPT(BasePolicy):
             acts = logits
         else:
             if np.random.rand() < 0.1:
-                # Add exploration noise to the actions
+                # 0.1的概率添加探索高斯噪声
                 noise = to_torch(self.noise_generator.generate(logits.shape),
                                  dtype=torch.float32, device=self._device)
                 # Add the noise to the action
@@ -194,7 +194,7 @@ class DiffusionOPT(BasePolicy):
         return bc_loss
 
     def _update_policy(self, batch: Batch, update: bool = False) -> torch.Tensor:
-        # Compute the policy gradient loss
+        # Compute the policy gradient loss 计算策略梯度损失
         obs_ = to_torch(batch.obs, device=self._device, dtype=torch.float32)
         acts_ = to_torch(self(batch).act, device=self._device, dtype=torch.float32)
         pg_loss = - self._critic.q_min(obs_, acts_).mean()
@@ -215,21 +215,21 @@ class DiffusionOPT(BasePolicy):
             batch: Batch,
             **kwargs: Any
     ) -> Dict[str, List[float]]:
-        # Update critic network. The critic network is updated to minimize the mean square error loss
-        # between the Q-value prediction (current_q1) and the target Q-value (target_q).
-        #更新评论家网络。评论家网络被更新以最小化Q值预测（current_q1）和目标Q值（target_q）之间的均方误差损失。
+        
+        #更新评论家网络。评论家网络被更新以最小化Q值预测（current_q1）和实际的目标Q值（target_q）之间的均方误差损失。
         critic_loss = self._update_critic(batch)
         # Update actor network. Here, we first calculate the policy gradient (pg_loss) and
         # behavior cloning loss (bc_loss) but we do not update the actor network yet.
         # The overall loss is a weighted combination of policy gradient loss and behavior cloning loss.
-        # 更新演员网络。首先，我们计算策略梯度（pg_loss）和行为克隆损失（bc_loss），但此时还不更新演员网络。总体损失是策略梯度损失和行为克隆损失的加权组合。
+        # 更新演员网络。首先，我们计算策略梯度（pg_loss）和行为克隆损失（bc_loss），但此时还不更新演员网络。、
+        # 总体损失是策略梯度损失和行为克隆损失的加权组合。但是这里并没有加权
         if self._bc_coef:
             bc_loss = self._update_bc(batch, update=False)
             overall_loss = bc_loss
         else:
             pg_loss = self._update_policy(batch, update=False)
             overall_loss = pg_loss
-
+        # 这三行代码共同构成了神经网络训练的梯度更新循环，典型流程为：清空旧梯度→计算新梯度→应用梯度更新参数
         self._actor_optim.zero_grad()
         overall_loss.backward()
         self._actor_optim.step()

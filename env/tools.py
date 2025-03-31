@@ -1,6 +1,6 @@
+from typing import Tuple
 import numpy as np
 
-import numpy as np
 
 def generate_rayleigh_channel(N: int, M: int, Omega: float=1) -> np.ndarray:
     """
@@ -88,24 +88,40 @@ def precoder_normalization(H):
     return p_c, p_k
 
 def rate_uk(
-    power_common_cof: float,  # 公共消息功率分配系数
-    power_private_cof: np.ndarray,  # 私有消息功率分配系数 [K,1]
-    power_alice: float,  # Alice的功率
-    power_jammer: float,  # Jammer的功率
-    channal_ruk: np.ndarray,  # RIS-Uk的信道增益 [N,K]
-    channal_ar: np.ndarray,  # Alice-RIS的信道增益 [N,M]
-    channal_jr: np.ndarray,  # Jammer-RIS的信道增益 [N,1]
-    ris: np.ndarray,  # RIS反射单元 [N,N]
-    distance_loss_cof_aru: np.ndarray,  # Alice-RIS-Uk的路径损失 [K,1]
-    distance_loss_cof_jru: np.ndarray,  # Jammer-RIS-Uk的路径损失 [K,1]
-    self_interference_cof: float,  # 自干扰系数
-    noise_variance: float,  # 噪声方差
-    user_number: int,  # 用户数量 K
-    procoder_common: np.ndarray,  # 公共消息预编码 [M,1]
-    procoder_private: np.ndarray  # 私有消息预编码 [M,K]
-) -> tuple[np.ndarray, np.ndarray]:
-    """
+    power_common_cof: float,  
+    power_private_cof: np.ndarray, 
+    power_alice: float,  
+    power_jammer: float,  
+    channal_ruk: np.ndarray, 
+    channal_ar: np.ndarray,  
+    channal_jr: np.ndarray, 
+    ris: np.ndarray, 
+    distance_loss_cof_aru: np.ndarray,  
+    distance_loss_cof_jru: np.ndarray,  
+    self_interference_cof: float, 
+    noise_variance: float, 
+    user_number: int,  
+    procoder_common: np.ndarray, 
+    procoder_private: np.ndarray 
+) -> Tuple[np.ndarray, np.ndarray]:
+    r"""
     计算公共消息速率和私有消息速率。
+    :param power_common_cof: 公共消息功率分配系数
+    :param power_private_cof: 私有消息功率分配系数 [K,1]
+    :param power_alice: Alice的功率
+    :param power_jammer: Jammer的功率
+    :param channal_ruk: RIS-Uk的信道增益 [N,K]
+    :param channal_ar: Alice-RIS的信道增益 [N,M]
+    :param channal_jr: Jammer-RIS的信道增益 [N,1]
+    :param ris: RIS反射单元 [N,N]
+    :param distance_loss_cof_aru: Alice-RIS-Uk的路径损失 [K,1]
+    :param distance_loss_cof_jru: Jammer-RIS-Uk的路径损失 [K,1]
+    :param self_interference_cof: 自干扰系数
+    :param noise_variance: 噪声方差
+    :param user_number: 用户数量 K
+    :param procoder_common: 公共消息预编码 [M,1]
+    :param procoder_private: 私有消息预编码 [M,K]
+    :return: 公共消息速率和私有消息速率 [K,1]
     """
     # 运行时检查，确保矩阵参数是 np.ndarray 类型
     for param in [channal_ruk, channal_ar, channal_jr, ris, 
@@ -148,3 +164,16 @@ def rate_uk(
     return rate_common_temp, rate_private_temp
 
 
+
+if __name__ == "__main__":
+    # 测试代码
+    N = 4  # 天线数
+    M = 2  # 用户数
+    Omega = 1  # 平均功率
+    m = 1.5  # Nakagami形状参数
+
+    H_rayleigh = generate_rayleigh_channel(N, M, Omega)
+    H_nakagami = generate_nakagami_channel(N, M, m, Omega)
+    h = H_rayleigh.flatten().reshape(-1, 1)
+    print("Rayleigh Channel:\n", h[:3])
+    print("Nakagami Channel:\n", H_rayleigh)

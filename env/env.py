@@ -3,16 +3,37 @@ from gym.spaces import Box, Discrete
 from tianshou.env import DummyVectorEnv
 from .utility import CompUtility
 import numpy as np
+import tools
 
 class AIGCEnv(gym.Env):
 
     def __init__(self):
-
+        
         self._flag = 0
-        # Define observation space based on the shape of the state
+        # 定义环境参数
+        self._power_total = 20 # 总功率
+        self._antanna_number = 3 # 天线数量
+        self._user_number = 3 # 用户数量
+        self._ris_number = 8 # RIS数量
+        self._power_J_cof = 1 # Jammer功率分配系数
+        self._power_c_cof = 1 # 公共消息功率分配系数
+        self._power_p_cof = 1 # 私有消息功率分配系数
+        self._m = 2 # 形状参数
+        self._Omega = 1 # 平均功率
+        self._distance_JR = 50 # Jammer-RIS的距离
+        self._distance_AR = 50 #Alice-RIS的距离
+        self._distance_step = 15 # 步长
+        self._distance_RUk = np.array([self._distance_JR + i * self._distance_step for i in range(self._user_number)]) # RIS-Uk的距离 依次增大的
+        self._path_loss_cof = -2.5 # 路径损失系数
+        self._L1 = (self._distance_RUk ** self._path_loss_cof) * (self._distance_AR ** self._path_loss_cof)    # Alice-RIS-Uk的路径损失
+        self._L2 = (self._distance_RUk ** self._path_loss_cof) * (self._distance_JR ** self._path_loss_cof)   # Jammer-RIS-Uk的路径损失
+        self._interference_cof = 0  # 自干扰系数
+        self._noise_variance = 10 ^(-80/10)  # 噪声方差
+        self._precoder_dim = self._antanna_number*(self._user_number+1) # 预编码器维度
+        # 定义观测空间
         self._observation_space = Box(shape=self.state.shape, low=0, high=1)
-        # Define action space - discrete space with 3 possible actions
-        self._action_space = Discrete(2*5)
+        # 定义动作空间
+        self._action_space = Discrete(self.action_space_dim)
         self._num_steps = 0
         self._terminated = False
         self._laststate = None
@@ -37,24 +58,29 @@ class AIGCEnv(gym.Env):
         # rng = np.random.default_rng(seed=0)
         # states1 = rng.uniform(1, 2, 5)
         # states2 = rng.uniform(0, 1, 5)
-
-        # states1 = np.random.uniform(1, 2, 5)
-        # states2 = np.random.uniform(0, 1, 5)
-        states1 = [1.1, 1.2, 1.3, 1.4, 1.5]
-        states2 = [0.23, 0.33, 0.44, 0.4, 0.5]
-
-        # states1 = [1.1, 1.4, 1.3, 1.8, 1.8]
-        # states2 = [0.433, 0.98, 0.44, 0.65, 0.5]
-        
-        
+        # 生成信道增益，返回都是复数形式
+        h_AR = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega)
+        h_JR = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega)
+        h_RW = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega)
+        h_RUk = [tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega) for _ in range(self._user_number)]
+        # 将所有信道增益转换为 N x 1 维度的向量并拼接
+        states1 = h_AR.flatten().reshape(-1, 1)
+        states2 = h_JR.flatten().reshape(-1, 1)
+        states3 = h_RW.flatten().reshape(-1, 1)
+        states4 = np.concatenate(h_RUk, axis=1).flatten().reshape(-1, 1)
         reward_in = []
         reward_in.append(0)
-        states = np.concatenate([states1, states2, reward_in])
-
-        self.channel_gains = np.concatenate([states1, states2])
+        # 拼接所有状态
+        states = np.concatenate([states1, states2, states3, states4, reward_in], axis=0)
+        self.channel_gains = np.concatenate([states1, states2, states3, states4])
         self._laststate = states
         return states
 
+    def action_space_dim(self) -> int:
+        '''返回动作空间的维度'''
+        return self._ris_number\
+                +self._power_p_cof+self._power_J_cof+self._power_c_cof\
+                +self._precoder_dim*2
 
     def step(self, action):
         # Check if episode has ended
