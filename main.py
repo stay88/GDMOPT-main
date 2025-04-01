@@ -28,7 +28,7 @@ def get_args():
     parser.add_argument('--algorithm', type=str, default='diffusion_opt')
     parser.add_argument('--seed', type=int, default=1) # 设置种子
     parser.add_argument('--buffer-size', type=int, default=1e6) # 1e6 经验回放缓冲区的大小
-    parser.add_argument('-e', '--epoch', type=int, default=1) # 训练的总轮数。每一轮包含多个训练步骤。
+    parser.add_argument('-e', '--epoch', type=int, default=1000) # 训练的总轮数。每一轮包含多个训练步骤。
     parser.add_argument('--step-per-epoch', type=int, default=1) # 每轮训练的步数。每一步对应一次与环境的交互。
     parser.add_argument('--step-per-collect', type=int, default=1) #每次收集数据的步数。通常用于决定何时更新策略
     parser.add_argument('-b', '--batch-size', type=int, default=512) # 每个训练批次的样本数量。较大的批量大小可以加速训练，但需要更多的内存
@@ -41,14 +41,14 @@ def get_args():
     parser.add_argument('--log-prefix', type=str, default='default') # # 日志文件的前缀。不同的前缀可以帮助区分不同的实验。
     parser.add_argument('--render', type=float, default=0.1)
     parser.add_argument('--rew-norm', type=int, default=0) # 奖励归一化。如果设置为 1，则对奖励进行归一化处理。
-    # parser.add_argument(
-    #     '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument(
-        '--device', type=str, default='cuda:0')
+        '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
+    # parser.add_argument(
+    #     '--device', type=str, default='cuda:0')
     parser.add_argument('--resume-path', type=str, default=None) # 恢复训练的路径。如果提供了一个有效的路径，则从该路径加载预训练的模型继续训练。
     parser.add_argument('--watch', action='store_true', default=False) # 是否进入测试模式。如果设置为 `True`，则只进行测试而不进行训练。
     parser.add_argument('--lr-decay', action='store_true', default=False) # 是否启用学习率衰减。如果设置为 `True`，则在训练过程中逐渐降低学习率。
-    parser.add_argument('--note', type=str, default='reward = np.sum(data_rate) --step-per-epoch=100 --step-per-collect=1000，环境不固定') # 备注信息。用于记录实验的一些额外信息。
+    parser.add_argument('--note', type=str, default='') # 备注信息。用于记录实验的一些额外信息。
 
      # for diffusion
     parser.add_argument('--actor-lr', type=float, default=1e-4) # 演员网络的学习率。
@@ -61,7 +61,7 @@ def get_args():
 
     # With Expert: bc-coef True 有专家数据
     # Without Expert: bc-coef False 无专家数据
-    parser.add_argument('--bc-coef', default=True) # Apr-04-132705 
+    parser.add_argument('--bc-coef', default=False) # Apr-04-132705 
     # parser.add_argument('--bc-coef', default=True)
 
     # for prioritized experience replay 优先经验回放

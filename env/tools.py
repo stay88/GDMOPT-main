@@ -22,7 +22,7 @@ def generate_rayleigh_channel(N: int, M: int, Omega: float=1) -> np.ndarray:
 
 
 
-def generate_nakagami_channel(N: int, M: int, m: float, Omega: float) -> np.ndarray:
+def generate_nakagami_channel(N: int, M: int, m: float, Omega: float, seed: int=None) -> np.ndarray:
     """
     生成Nakagami-m衰落信道矩阵（幅度服从Nakagami-m分布，相位均匀分布）
     输入参数：
@@ -35,15 +35,15 @@ def generate_nakagami_channel(N: int, M: int, m: float, Omega: float) -> np.ndar
     """
     if m < 0.5:
         raise ValueError("Nakagami形状参数m必须 >= 0.5")
-    
+    rng = np.random.default_rng(seed)
     # 生成伽马分布随机变量（形状参数=m，尺度参数=Omega/m）
-    gamma_samples = np.random.gamma(shape=m, scale=Omega/m, size=(N, M))
+    gamma_samples = rng.gamma(shape=m, scale=Omega/m, size=(N, M))
     
     # 幅度 = sqrt(伽马变量)
     amplitude = np.sqrt(gamma_samples)
     
     # 生成均匀相位（0到2π）
-    phase = np.random.uniform(0, 2*np.pi, (N, M))
+    phase = rng.uniform(0, 2*np.pi, (N, M))
     
     # 合成复信道矩阵
     return amplitude * np.exp(1j * phase)
@@ -203,8 +203,7 @@ def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:
     :param phase_array: 一维相位数组（维度为N），单位弧度
     :return: NxN的RIS对角矩阵，对角线元素为复数exp(j*phase)
     """
-    # 检查输入合法性
-    assert phase_array.ndim != 1, "Input phase_array must be a 1D numpy array"
+
     
     # 生成复数（幅度为1）
     diag_elements = np.exp(1j * phase_array)
@@ -249,13 +248,8 @@ def procoder(antenna_number,
 
 
 if __name__ == "__main__":
-    # 测试代码
-    N = 4  # 天线数
-    M = 2  # 用户数
-    Omega = 1  # 平均功率
-    m = 1.5  # Nakagami形状参数
-
-    ris = generate_RIS_random(N)
-    A = np.zeros([3,])
-    print("RIS反射单元：", A.ndim)
-    print("RIS反射单元：", A)
+    for i in range(2):
+        h1 = generate_nakagami_channel(3, 3, 2, 1)
+        print(h1)
+    h1 = generate_nakagami_channel(3, 3, 2, 1, seed=0)
+    print(h1)

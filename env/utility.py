@@ -5,16 +5,9 @@ from scipy.special import gammainc
 import math
 from scipy.io import savemat
 import os
-import tools
+from env import tools
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
-
-def rayleigh_channel_gain(ex, sta):
-    num_samples = 1
-    gain = np.random.normal(ex, sta, num_samples)
-    # Square the absolute value to get Rayleigh-distributed gains
-    gain = np.abs(gain) ** 2
-    return gain
 
 
 # Function to compute utility (reward) for the given state and action
@@ -27,7 +20,6 @@ def CompUtility(State,
                 channel_gain_UK,
                 channel_gain_AR,
                 channel_gain_JR,
-                RIS,
                 L1,
                 L2,
                 L3,
@@ -58,10 +50,12 @@ def CompUtility(State,
     power_common = power_allocation[1]  # 公共消息功率
     power_private = power_allocation[2]  # 私有消息总功率
     power_Alice = power_common + power_private  # Alice功率
+    # print(f"power_Jammer: {power_Jammer}, power_common: {power_common}, power_private: {power_private}, power_Alice: {power_Alice}")
 
     # 生成RIS
     RIS_phase = 2 * math.pi * Action[ Action_dim_distinguish[0] : Action_dim_distinguish[0]+Action_dim_distinguish[1]]
     RIS = tools.generate_RIS_from_phase(RIS_phase)
+
 
     # 生成预编码器
     procoder_amplitude = Action[Action_dim_distinguish[0]+Action_dim_distinguish[1] : Action_dim_distinguish[0]+Action_dim_distinguish[1]+Action_dim_distinguish[2]]
@@ -73,6 +67,7 @@ def CompUtility(State,
         phase=procoder_phase
     )
 
+    # 计算AMDEP
     AMDEP = tools.AMDEP(
         user_number=user_number,
         power_Jammer_max=power_Jammer,
@@ -81,7 +76,9 @@ def CompUtility(State,
         L3=L3,
         L4=L4
     )
-    
+    # print(f"AMDEP: {AMDEP}")
+
+    # 计算速率
     rate_common_temp, rate_private_temp = tools.rate_uk(
         power_common_cof=power_common_cof,
         power_private_cof=power_private_cof,
@@ -99,11 +96,12 @@ def CompUtility(State,
         procoder_common=common_procoder,
         procoder_private=private_procoder
         )
-    
-    if AMDEP < AMDEP_cof:
-        reward = 0
-    else:
-        reward = np.min(rate_common_temp) + np.sum(rate_private_temp)
+    reward = AMDEP
+    # if AMDEP < AMDEP_cof:
+    #     reward = -1
+    # else:
+    #     print(f"AMDEP: {AMDEP}")
+    #     reward = np.min(rate_common_temp) + np.sum(rate_private_temp)
     expert_action = None
     subopt_expert_action = None
     return reward, expert_action, subopt_expert_action, Action

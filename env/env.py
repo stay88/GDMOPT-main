@@ -3,7 +3,7 @@ from gym.spaces import Box, Discrete
 from tianshou.env import DummyVectorEnv
 from .utility import CompUtility
 import numpy as np
-import tools
+from env import tools
 
 class AIGCEnv(gym.Env):
 
@@ -11,6 +11,7 @@ class AIGCEnv(gym.Env):
         
         self._flag = 0
         # 定义环境参数
+        self._AMDEP_cof = 0.8 # AMDEP系数
         self._power_total = 20 # 总功率
         self._antanna_number = 3 # 天线数量
         self._user_number = 3 # 用户数量
@@ -28,17 +29,19 @@ class AIGCEnv(gym.Env):
         self._path_loss_cof = -2.5 # 路径损失系数
         self._L1 = (self._distance_RUk ** self._path_loss_cof) * (self._distance_AR ** self._path_loss_cof)    # Alice-RIS-Uk的路径损失
         self._L2 = (self._distance_RUk ** self._path_loss_cof) * (self._distance_JR ** self._path_loss_cof)   # Jammer-RIS-Uk的路径损失
-        self._L3 = self.__distance_RW ** self._path_loss_cof * self._distance_JR ** self._path_loss_cof  # Jammer-RIS-Willie的路径损失
+        self._L3 = self._distance_RW ** self._path_loss_cof * self._distance_JR ** self._path_loss_cof  # Jammer-RIS-Willie的路径损失
         self._L4 = self._distance_RW ** self._path_loss_cof * self._distance_AR ** self._path_loss_cof  # Alice-RIS-Willie的路径损失
         self._interference_cof = 0  # 自干扰系数
-        self._noise_variance = 10 ^(-80/10)  # 噪声方差
+        self._noise_variance = 10 **(-80/10)  # 噪声方差
         self._rate_common_lowwer = 0 # 公共消息速率下限
         self._rate_private_lowwer = 0 # 私有消息速率下限
         self._precoder_dim = self._antanna_number*(self._user_number+1) # 预编码器维度
         # 定义观测空间
         self._observation_space = Box(shape=self.state.shape, low=0, high=1)
         # 定义动作空间
-        self._action_space = Discrete(self.action_space_dim)
+        self._action_space = Discrete(self._ris_number\
+                +self._power_p_cof+self._power_J_cof+self._power_c_cof\
+                +self._precoder_dim*2)
         self._num_steps = 0
         self._terminated = False
         self._laststate = None
@@ -64,20 +67,23 @@ class AIGCEnv(gym.Env):
         # states1 = rng.uniform(1, 2, 5)
         # states2 = rng.uniform(0, 1, 5)
         # 生成信道增益，返回都是复数形式
-        h_AR = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega)
-        h_JR = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega)
-        h_RW = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega)
-        h_RUk = [tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega) for _ in range(self._user_number)]
+        seed = 1
+        # seed = None
+        h_AR = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega, seed)
+        h_JR = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega, seed)
+        h_RW = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega, seed)
+        h_RUk = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega, seed)
         # 将所有信道增益转换为 N x 1 维度的向量并拼接
-        states1 = h_AR.flatten().reshape(-1, 1)
-        states2 = h_JR.flatten().reshape(-1, 1)
-        states3 = h_RW.flatten().reshape(-1, 1)
-        states4 = np.concatenate(h_RUk, axis=1).flatten().reshape(-1, 1)
+        states1 = h_AR.flatten()
+        states2 = h_JR.flatten()
+        states3 = h_RW.flatten()
+        states4 = h_RUk.flatten()
         reward_in = []
         reward_in.append(0)
         # 拼接所有状态
         states = np.concatenate([states1, states2, states3, states4, reward_in], axis=0)
-        self.channel_gains = [h_AR, h_JR, h_RW, h_RUk]
+        self.channel_gains_dict = {"h_AR":h_AR, "h_JR":h_JR, "h_RW":h_RW, "h_RUk":h_RUk}
+        self.channel_gains = np.concatenate([states1, states2, states3, states4], axis=0)
         self._laststate = states
         return states
 
@@ -90,8 +96,26 @@ class AIGCEnv(gym.Env):
     def step(self, action):
         # Check if episode has ended
         assert not self._terminated, "One episodic has terminated"
+        action_dim_distinguish = [3, self._ris_number, self._precoder_dim, self._precoder_dim]
         # Calculate reward based on last state and action taken
-        reward, expert_action, sub_expert_action, real_action = CompUtility(self.channel_gains, action)
+        reward, expert_action, sub_expert_action, real_action = CompUtility(
+            self._laststate,
+            action,
+            action_dim_distinguish,
+            self._user_number,
+            self._antanna_number,
+            self._power_total,
+            self.channel_gains_dict["h_RUk"],
+            self.channel_gains_dict["h_AR"],
+            self.channel_gains_dict["h_JR"],
+            self._L1,
+            self._L2,
+            self._L3,
+            self._L4,
+            self._interference_cof,
+            self._noise_variance,
+            self._AMDEP_cof
+            )
 
         self._laststate[-1] = reward
         # self._laststate[0:-1] = self.channel_gains * real_action # 就算赋值在断点中也不会改变
