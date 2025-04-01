@@ -204,8 +204,7 @@ def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:
     :return: NxN的RIS对角矩阵，对角线元素为复数exp(j*phase)
     """
     # 检查输入合法性
-    if phase_array.ndim != 1:
-        raise ValueError("Input phase_array must be a 1D numpy array")
+    assert phase_array.ndim != 1, "Input phase_array must be a 1D numpy array"
     
     # 生成复数（幅度为1）
     diag_elements = np.exp(1j * phase_array)
@@ -214,16 +213,39 @@ def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:
     ris_matrix = np.diag(diag_elements)
     return ris_matrix
 
-def procoder(antenna_number,amplitude,phase) -> Tuple[np.ndarray, np.ndarray]:
+def procoder(antenna_number,
+             user_number,
+             amplitude:np.ndarray,
+             phase:np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     '''
     生成预编码器
+    :param antenna_number: 天线数
+    :param user_number: 用户数
     :param amplitude: 预编码器幅度
     :param phase: 预编码器相位
     :return: 预编码器
     '''
+    assert len(amplitude)== len(phase), "预编码器幅度和相位长度不匹配"
+    assert antenna_number*(user_number+1) == len(amplitude), "预编码器幅度长度不匹配"
     common_amplitude = amplitude[:antenna_number]
     common_amplitude = common_amplitude/np.sum(common_amplitude)
     common_phase = phase[:antenna_number]
+    common_procoder = common_amplitude * np.exp(1j * common_phase)
+    
+    private_amplitude = amplitude[antenna_number:]
+    private_phase = phase[antenna_number:]
+    # 转换为列优先矩阵（Fortran顺序）
+    private_amplitude = private_amplitude.reshape((antenna_number, user_number), order='F')
+    private_phase = private_phase.reshape((antenna_number, user_number), order='F')
+    
+    # L1归一化每列幅度（保证Σ|amplitude|=1）[3,6](@ref)
+    col_sums = private_amplitude.sum(axis=0, keepdims=True)
+    private_amplitude = private_amplitude / col_sums
+    
+    # 生成复数矩阵（欧拉公式法）[1,2](@ref)
+    private_procoder = private_amplitude * np.exp(1j * private_phase)
+    
+    return common_procoder, private_procoder
 
 
 if __name__ == "__main__":

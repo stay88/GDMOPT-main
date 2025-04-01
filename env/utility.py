@@ -22,6 +22,7 @@ def CompUtility(State,
                 Action, 
                 Action_dim_distinguish,
                 user_number,
+                antenna_number,
                 power_total,
                 channel_gain_UK,
                 channel_gain_AR,
@@ -32,7 +33,9 @@ def CompUtility(State,
                 L3,
                 L4,
                 self_interference_cof,
-                noise_variance,):
+                noise_variance,
+                AMDEP_cof
+                ):
     '''
     计算奖励函数
     :param State: 信道增益
@@ -62,30 +65,45 @@ def CompUtility(State,
 
     # 生成预编码器
     procoder_amplitude = Action[Action_dim_distinguish[0]+Action_dim_distinguish[1] : Action_dim_distinguish[0]+Action_dim_distinguish[1]+Action_dim_distinguish[2]]
-    procoder_phase = 2 * math.pi * Action[Action_dim_distinguish[0]+Action_dim_distinguish[1]+Action_dim_distinguish[2]:]
-    
+    procoder_phase = 2 * math.pi * Action[Action_dim_distinguish[0]+Action_dim_distinguish[1]+Action_dim_distinguish[2] : ]
+    common_procoder, private_procoder = tools.procoder(
+        antenna_number=antenna_number,
+        user_number=user_number,
+        amplitude=procoder_amplitude,
+        phase=procoder_phase
+    )
 
-    AMDEP = tools.AMDEP(user_number=user_number,
-                        power_Jammer_max=power_Jammer,
-                        power_Alice=power_Alice,
-                        power_common_cof = power_common_cof,
-                        L3=L3,
-                        L4=L4)
+    AMDEP = tools.AMDEP(
+        user_number=user_number,
+        power_Jammer_max=power_Jammer,
+        power_Alice=power_Alice,
+        power_common_cof = power_common_cof,
+        L3=L3,
+        L4=L4
+    )
     
-    rate_common_temp, rate_private_temp = tools.rate_uk(power_common_cof=power_common_cof,
-                                                        power_private_cof=power_private_cof,
-                                                        power_alice=power_Alice,
-                                                        power_jammer=power_Jammer,
-                                                        channal_ruk=channel_gain_UK,
-                                                        channal_ar=channel_gain_AR,
-                                                        channal_jr=channel_gain_JR,
-                                                        ris=RIS,
-                                                        distance_loss_cof_aru=L1,
-                                                        distance_loss_cof_jru=L2,
-                                                        self_interference_cof=self_interference_cof,
-                                                        noise_variance=noise_variance,
-                                                        user_number=user_number,
-                                                        procoder_common=)
+    rate_common_temp, rate_private_temp = tools.rate_uk(
+        power_common_cof=power_common_cof,
+        power_private_cof=power_private_cof,
+        power_alice=power_Alice,
+        power_jammer=power_Jammer,
+        channal_ruk=channel_gain_UK,
+        channal_ar=channel_gain_AR,
+        channal_jr=channel_gain_JR,
+        ris=RIS,
+        distance_loss_cof_aru=L1,
+        distance_loss_cof_jru=L2,
+        self_interference_cof=self_interference_cof,
+        noise_variance=noise_variance,
+        user_number=user_number,
+        procoder_common=common_procoder,
+        procoder_private=private_procoder
+        )
     
-    
-    return reward, expert_action, subopt_expert_action, Aution
+    if AMDEP < AMDEP_cof:
+        reward = 0
+    else:
+        reward = np.min(rate_common_temp) + np.sum(rate_private_temp)
+    expert_action = None
+    subopt_expert_action = None
+    return reward, expert_action, subopt_expert_action, Action
