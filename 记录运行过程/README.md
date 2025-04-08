@@ -342,3 +342,29 @@ opt_reward 4.165045679692206
 Final reward mean value: 4.074862524970589, length: 1.0
 ```
 
+
+
+
+
+# 自己模型的运行记录
+
+**环境**
+
+```python
+Namespace(action_shape=35, actor_lr=0.0001, algorithm='diffusion_opt', batch_size=1024, bc_coef=False, beta_schedule='vp', buffer_size=1000000.0, critic_lr=0.0001, device='cuda', epoch=100000.0, exploration_noise=0.1, gamma=1, log_prefix='default', logdir='log', lr_decay=False, max_action=1.0, n_step=3, n_timesteps=8, note='', prior_alpha=0.4, prior_beta=0.4, prioritized_replay=False, render=0.1, resume_path=None, rew_norm=0, seed=1, state_shape=113, step_per_collect=1, step_per_epoch=1, tau=0.005, test_num=1, training_num=1, watch=False, wd=0.0001)
+```
+
+```
+环境不变 seed = 1
+reward = AMDEP
+调整的参数 batch_size=1024
+```
+
+
+
+**运行结果**
+
+log\default\diffusion\Apr07-134204
+
+![image-20250407134629870](README.assets/image-20250407134629870.png)
+

@@ -194,7 +194,6 @@ def AMDEP(user_number,
     return xi_a_star
 
 
-import numpy as np
 
 def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:
     """
@@ -204,7 +203,6 @@ def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:
     :return: NxN的RIS对角矩阵，对角线元素为复数exp(j*phase)
     """
 
-    
     # 生成复数（幅度为1）
     diag_elements = np.exp(1j * phase_array)
     

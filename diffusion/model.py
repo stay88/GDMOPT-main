@@ -3,7 +3,7 @@ import torch.nn as nn
 from .helpers import SinusoidalPosEmb
 from tianshou.data import Batch, ReplayBuffer, to_torch
 
-# 多次感知机
+# 多层感知机
 class MLP(nn.Module):
     def __init__(
         self,
