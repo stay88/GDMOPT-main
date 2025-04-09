@@ -37,11 +37,9 @@ class AIGCEnv(gym.Env):
         self._rate_private_lowwer = 0 # 私有消息速率下限
         self._precoder_dim = self._antanna_number*(self._user_number+1) # 预编码器维度
         # 定义观测空间
-        self._observation_space = Box(shape=self.state.shape, low=0, high=1)
+        self._observation_space = Box(shape=self.state.shape, low=-np.inf, high=np.inf)
         # 定义动作空间
-        self._action_space = Discrete(self._ris_number\
-                +self._power_p_cof+self._power_J_cof+self._power_c_cof\
-                +self._precoder_dim*2)
+        self._action_space = Discrete(3)
         self._num_steps = 0
         self._terminated = False
         self._laststate = None
@@ -94,15 +92,13 @@ class AIGCEnv(gym.Env):
 
     def action_space_dim(self) -> int:
         '''返回动作空间的维度'''
-        return self._ris_number\
-                +self._power_p_cof+self._power_J_cof+self._power_c_cof\
-                +self._precoder_dim*2
+        return self._ris_number+self._precoder_dim*2
 
     def step(self, action):
         # Check if episode has ended
         assert not self._terminated, "One episodic has terminated"
         # 区分不同动作的指针
-        action_dim_distinguish = [3, self._ris_number, self._precoder_dim, self._precoder_dim]
+        action_dim_distinguish = [self._ris_number, self._precoder_dim, self._precoder_dim]
         # Calculate reward based on last state and action taken
         reward, expert_action, sub_expert_action, real_action = CompUtility(
             self._laststate,
@@ -110,6 +106,7 @@ class AIGCEnv(gym.Env):
             action_dim_distinguish,
             self._user_number,
             self._antanna_number,
+            self._ris_number,
             self._power_total,
             self.channel_gains_dict["h_RUk"],
             self.channel_gains_dict["h_AR"],

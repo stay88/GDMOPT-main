@@ -49,13 +49,14 @@ def generate_nakagami_channel(N: int, M: int, m: float, Omega: float, seed: int=
     return amplitude * np.exp(1j * phase)
 
 
-def generate_RIS_random(N) -> np.ndarray:
+def generate_RIS_random(N, seed=None) -> np.ndarray:
     """
     生成 NxN 随机的 RIS 对角矩阵
     :param N: 矩阵维度
     :return: NxN 的对角矩阵，对角线元素为幅度为1的复数
     """
     # 生成均匀分布的相位
+    np.random.seed(seed)
     phase = 2 * np.pi * np.random.rand(N, 1)
     
     # 生成复数，幅度为1
@@ -66,7 +67,7 @@ def generate_RIS_random(N) -> np.ndarray:
     return ris
 
 
-def precoder_normalization(H):
+def precoder_normalization(H: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
     """
     计算预编码向量和矩阵
     :param H: Alice-User 的信道增益矩阵 [N_t, K] (天线数 x 用户数)

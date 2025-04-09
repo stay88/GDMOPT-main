@@ -16,6 +16,7 @@ def CompUtility(State,
                 Action_dim_distinguish,
                 user_number,
                 antenna_number,
+                ris_number,
                 power_total,
                 channel_gain_UK,
                 channel_gain_AR,
@@ -32,42 +33,32 @@ def CompUtility(State,
     计算奖励函数
     :param State: 信道增益
     :param Action: 动作
-    :param Action_dim: 动作维度的区分 例如[3,8,12,12]
+    :param Action_dim: 动作维度的区分 例如[8,12,12]
     :param user_number: 用户数量
     :return: 奖励
-        动作的前3个元素是功率分配，中间是RIS的相位，最后是预编码器的幅度和相位
-        例如[3,8,12,12]
-        [Jammer功率分配, 公共消息功率分配, 私有消息功率分配, RIS相位, 预编码器相位,预编码器幅度]
+        例如[8,12,12]
+        [RIS相位, 预编码器相位,预编码器幅度]
     '''
     actions = torch.from_numpy(np.array(Action)).float()
     actions = torch.abs(actions)
     Action = actions.numpy()
     # print(f"action: {Action}")
-    
-    normalized_weights = Action[:3] / np.sum(Action[:3]) # 归一化映射功率分配系数
+    normalized_weights = Action/ np.sum(Action) # 归一化映射功率分配系数
     power_allocation = normalized_weights * 10**( power_total /10) # 功率分配 dBm
     # print(f"power_allocation: {power_allocation}")
-    power_Jammer = power_allocation[0] # 转化为w
-    power_common = power_allocation[1]# 转化为w
-    power_private = power_allocation[2]# 转化为w
+    power_Jammer = power_allocation[0] # 转化为mw
+    power_common = power_allocation[1] # 转化为mw
+    power_private = power_allocation[2] # 转化为mw
     power_Alice = power_common + power_private  # Alice功率
     power_common_cof =  power_common/power_Alice # 公共消息功率分配系数
     power_private_cof = np.full((user_number, 1), (1-power_common_cof)/user_number)  # 私有消息功率分配系数
     # print(f"power_Jammer: {power_Jammer}w, power_common: {power_common}w, power_private: {power_private}w, power_Alice: {power_Alice}w")
     # 生成RIS
-    RIS_phase = 2 * math.pi * Action[ Action_dim_distinguish[0] : Action_dim_distinguish[0]+Action_dim_distinguish[1]]
-    RIS = tools.generate_RIS_from_phase(RIS_phase)
+    RIS = tools.generate_RIS_random(ris_number, seed=1)
     # print(f"RIS_phase: {RIS_phase}")
 
     # 生成预编码器
-    procoder_phase = 2 * math.pi * Action[Action_dim_distinguish[0]+Action_dim_distinguish[1] : Action_dim_distinguish[0]+Action_dim_distinguish[1]+Action_dim_distinguish[2]]
-    procoder_amplitude = Action[Action_dim_distinguish[0]+Action_dim_distinguish[1]+Action_dim_distinguish[2] : ]
-    common_procoder, private_procoder = tools.procoder(
-        antenna_number=antenna_number,
-        user_number=user_number,
-        amplitude=procoder_amplitude,
-        phase=procoder_phase
-    )
+    common_procoder, private_procoder = tools.precoder_normalization(channel_gain_UK.conj().T @ RIS @ channel_gain_AR)
     # print(f"common_procoder: {common_procoder}, private_procoder: {private_procoder}")
 
     # 计算AMDEP
