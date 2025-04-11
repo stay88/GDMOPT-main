@@ -163,7 +163,8 @@ def rate_uk(
         
         rate_private_temp[k] = rate_private_up / rate_private_down
     
-    return rate_common_temp, rate_private_temp
+    return np.log2(1+rate_common_temp), np.log2(1+rate_private_temp)
+    # return rate_common_temp, rate_private_temp
 
 def AMDEP(user_number,
           power_Jammer_max,
@@ -194,6 +195,58 @@ def AMDEP(user_number,
 
     return xi_a_star
 
+def AMDEP_true_channal(
+        alphaC,
+        power_Alice,
+        power_Jammer_max,
+        user_number: int,
+        RIS : np.ndarray,
+        procoder_common: np.ndarray,
+        procoder_private: np.ndarray,
+        h_RW : np.ndarray,
+        h_AR : np.ndarray,
+        h_JR : np.ndarray,
+        L3,
+        L4,
+        noise_variance: float,
+):
+    '''
+    计算AMDEP
+    :param alphaC: 公共消息功率分配系数
+    :param power_Alice: Alice的功率
+    :param power_Jammer_max: Jammer的最大功率
+    :param user_number: 用户数量
+    :param RIS: RIS反射单元 [N,N]
+    :param procoder_common: 公共消息预编码 [M,1]
+    :param procoder_private: 私有消息预编码 [M,K]
+    :param h_RW: RIS-Willie的信道增益 [N,1]
+    :param h_AR: Alice-RIS的信道增益 [N,M]
+    :param h_JR: Jammer-RIS的信道增益 [N,1]
+    :param L3: Jammer-RIS-Willie的路径损失
+    :param L4: Alice-RIS-Willie的路径损失
+    :param noise_variance: 噪声方差
+    :return: AMDEP
+    '''
+    g_JRW = h_RW.conj().T @ RIS @ h_JR
+    g_ARW =  h_RW.conj().T @ RIS @ h_AR @ procoder_common
+    sum_user_channal_gain = 0
+    for i in range(user_number):
+        g_ARU_k = h_RW.conj().T @ RIS @ h_AR @ procoder_private[:,i]
+        sum_user_channal_gain = sum_user_channal_gain + (1-alphaC)/user_number * np.abs(g_ARU_k) ** 2
+    
+    l1 = np.abs(g_JRW) ** 2 * L3
+    l2 = power_Alice * L4
+    # 分段函数
+    tao1 = 0 + np.abs(g_ARW) ** 2 * alphaC * l2 + noise_variance
+    tao2 = l1 * power_Jammer_max + np.abs(g_ARW) ** 2 * alphaC * l2 + noise_variance
+    tao3 = 0 + (np.abs(g_ARW) ** 2 * alphaC + sum_user_channal_gain) * l2 + noise_variance
+    tao4 = l1 * power_Jammer_max + (np.abs(g_ARW) ** 2 * alphaC + sum_user_channal_gain) * l2 + noise_variance
+    # 计算AMDEP
+    if tao2 > tao3:
+        AMDEP = 1 - ((sum_user_channal_gain * l2) / (power_Jammer_max * l1))
+    else:
+        AMDEP = 0
+    return AMDEP
 
 
 def generate_RIS_from_phase(phase_array: np.ndarray) -> np.ndarray:

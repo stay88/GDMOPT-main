@@ -141,6 +141,7 @@ class DiffusionOPT(BasePolicy):
                                  dtype=torch.float32, device=self._device)
                 # Add the noise to the action
                 acts = logits + noise
+                # acts = logits
                 acts = torch.clamp(acts, -1, 1)
             else:
                 acts = logits

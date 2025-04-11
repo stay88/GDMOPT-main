@@ -39,7 +39,7 @@ class AIGCEnv(gym.Env):
         # 定义观测空间
         self._observation_space = Box(shape=self.state.shape, low=-np.inf, high=np.inf)
         # 定义动作空间
-        self._action_space = Discrete(3)
+        self._action_space = Discrete(self._ris_number+2*self._antanna_number*(self._user_number+1))
         self._num_steps = 0
         self._terminated = False
         self._laststate = None
@@ -66,27 +66,29 @@ class AIGCEnv(gym.Env):
         # states2 = rng.uniform(0, 1, 5)
         # 生成信道增益，返回都是复数形式 
         # 维度 h_AR=N*M h_JR=N*1 h_RW=N*1 h_RUk=N*1*K
-        seed = 1 # 种子
-        # seed = None
-        h_AR = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega, seed)
-        h_JR = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega, seed)
-        h_RW = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega, seed)
-        h_RUk = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega, seed)
+        seed = [12,2,254,1] # 种子
+        # seed = [None, None, None, None] # 随机种子
+        h_AR = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega, seed[0])
+        h_JR = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega, seed[1])
+        h_RW = tools.generate_nakagami_channel(self._ris_number, 1, self._m, self._Omega, seed[2])
+        h_RUk = tools.generate_nakagami_channel(self._ris_number, self._user_number, self._m, self._Omega, seed[3])
         # 将所有信道增益转换为 N x 1 维度的向量并拼接
-        states_AR_real = np.real(h_AR.flatten())
-        states_AR_imag = np.imag(h_AR.flatten())
-        states_JR_real = np.real(h_JR.flatten())
-        states_JR_imag = np.imag(h_JR.flatten())
-        states_RW_real = np.real(h_RW.flatten()) # h_RW
-        states_RW_imag = np.imag(h_RW.flatten())
-        states_RUk_real = np.real(h_RUk.flatten())
-        states_RUk_imag = np.imag(h_RUk.flatten())
+        states_AR_real, states_AR_imag  = np.real(h_AR.flatten()), np.imag(h_AR.flatten())
+        states_JR_real, states_JR_imag = np.real(h_JR.flatten()), np.imag(h_JR.flatten())
+        states_h_RW_real, states_h_RW_imag = np.real(h_RW.flatten()), np.imag(h_RW.flatten())
+        states_RUk_real, states_RUk_imag = np.real(h_RUk.flatten()), np.imag(h_RUk.flatten())
+        # AR_magnitude, AR_phase = np.abs(h_AR.flatten()),np.angle(h_AR.flatten()) % (2 * np.pi)  # 返回元组 (r, θ)
+        # JR_magnitude, JR_phase = np.abs(h_JR.flatten()),np.angle(h_JR.flatten()) % (2 * np.pi)  # 返回元组 (r, θ)
+        # RW_magnitude, RW_phase = np.abs(h_RW.flatten()),np.angle(h_RW.flatten()) % (2 * np.pi)  # 返回元组 (r, θ)
+        # RUk_magnitude, RUk_phase = np.abs(h_RUk.flatten()),np.angle(h_RUk.flatten()) % (2 * np.pi)  # 返回元组 (r, θ)
         reward_in = []
         reward_in.append(0)
         # 拼接所有状态, state维度 2*(N*M+N*1+N*1*K)
-        states = np.concatenate([states_AR_real, states_JR_real, states_RUk_real, states_AR_imag, states_JR_imag, states_RUk_imag,  reward_in], axis=0)
+        # states = np.concatenate([AR_magnitude, AR_phase, JR_magnitude, JR_phase, RUk_magnitude, RUk_phase, reward_in])
+        states = np.concatenate([states_AR_real, states_AR_imag, states_JR_real, states_JR_imag, states_RUk_real, states_RUk_imag, reward_in])
         self.channel_gains_dict = {"h_AR":h_AR, "h_JR":h_JR, "h_RW":h_RW, "h_RUk":h_RUk}
-        self.channel_gains = np.concatenate([states_AR_real, states_JR_real, states_RUk_real, states_AR_imag, states_JR_imag, states_RUk_imag], axis=0)
+        # self.channel_gains = np.concatenate([AR_magnitude, AR_phase, JR_magnitude, JR_phase, RUk_magnitude, RUk_phase])
+        self.channel_gains = np.concatenate([states_AR_real, states_AR_imag, states_JR_real, states_JR_imag, states_RUk_real, states_RUk_imag])
         self._laststate = states
         return states
 
@@ -97,13 +99,10 @@ class AIGCEnv(gym.Env):
     def step(self, action):
         # Check if episode has ended
         assert not self._terminated, "One episodic has terminated"
-        # 区分不同动作的指针
-        action_dim_distinguish = [self._ris_number, self._precoder_dim, self._precoder_dim]
         # Calculate reward based on last state and action taken
         reward, expert_action, sub_expert_action, real_action = CompUtility(
             self._laststate,
             action,
-            action_dim_distinguish,
             self._user_number,
             self._antanna_number,
             self._ris_number,
@@ -111,6 +110,7 @@ class AIGCEnv(gym.Env):
             self.channel_gains_dict["h_RUk"],
             self.channel_gains_dict["h_AR"],
             self.channel_gains_dict["h_JR"],
+            self.channel_gains_dict["h_RW"],
             self._L1,
             self._L2,
             self._L3,
@@ -122,8 +122,8 @@ class AIGCEnv(gym.Env):
 
         self._laststate[-1] = reward
         # self._laststate[0:-1] = self.channel_gains * real_action # 就算赋值在断点中也不会改变
-        # print(self._laststate.base)  # 如果不是 None，说明是视图
         self._laststate[0:-1] = self.channel_gains
+        print(f"self._laststate : {self._laststate}")
         self._num_steps += 1
         # Check if episode should end based on number of steps taken
         if self._num_steps >= self._steps_per_episode:
