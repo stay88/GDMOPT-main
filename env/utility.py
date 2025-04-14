@@ -73,5 +73,5 @@ def CompUtility(State, Aution):
 
     reward = np.sum(data_rate)-sumdata_rate
     # reward = np.sum(data_rate)
-    print('opt_reward',sumdata_rate)
+    # print('opt_reward',sumdata_rate)
     return reward, expert_action, subopt_expert_action, Aution

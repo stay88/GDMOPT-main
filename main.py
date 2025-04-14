@@ -26,16 +26,16 @@ def get_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--exploration-noise", type=float, default=0.1) # 控制探索噪声的强度。在训练过程中，添加一定量的噪声可以增加探索性，帮助模型发现更多的状态空间
     parser.add_argument('--algorithm', type=str, default='diffusion_opt')
-    parser.add_argument('--seed', type=int, default=1) # 设置种子
+    parser.add_argument('--seed', type=int, default=2) # 设置种子
     parser.add_argument('--buffer-size', type=int, default=1e6) # 1e6 经验回放缓冲区的大小
-    parser.add_argument('-e', '--epoch', type=int, default=20) # 训练的总轮数。每一轮包含多个训练步骤。
-    parser.add_argument('--step-per-epoch', type=int, default=100) # 每轮训练的步数。每一步对应一次与环境的交互。
-    parser.add_argument('--step-per-collect', type=int, default=1000) #每次收集数据的步数。通常用于决定何时更新策略
+    parser.add_argument('-e', '--epoch', type=int, default=1e4) # 训练的总轮数。每一轮包含多个训练步骤。
+    parser.add_argument('--step-per-epoch', type=int, default=1) # 每轮训练的步数。每一步对应一次与环境的交互。
+    parser.add_argument('--step-per-collect', type=int, default=1) #每次收集数据的步数。通常用于决定何时更新策略
     parser.add_argument('-b', '--batch-size', type=int, default=512) # 每个训练批次的样本数量。较大的批量大小可以加速训练，但需要更多的内存
-    parser.add_argument('--wd', type=float, default=1e-4) # 权重衰减（Weight Decay）。用于正则化，防止过拟合。
+    parser.add_argument('--wd', type=float, default=1e-5) # 权重衰减（Weight Decay）。用于正则化，防止过拟合。
     parser.add_argument('--gamma', type=float, default=1) # 折扣因子（Discount Factor）。控制未来奖励的重要性。值越小，对未来奖励的关注越少。
     parser.add_argument('--n-step', type=int, default=3) # N-Step 返回。决定了使用多少步的奖励来计算目标价值。
-    parser.add_argument('--training-num', type=int, default=1) # 训练环境中并行运行的环境数量。增加这个值可以加速训练。
+    parser.add_argument('--training-num', type=int, default=2) # 训练环境中并行运行的环境数量。增加这个值可以加速训练。
     parser.add_argument('--test-num', type=int, default=1) # 测试环境中并行运行的环境数量。增加这个值可以更好地评估模型性能。
     parser.add_argument('--logdir', type=str, default='log') # log目录
     parser.add_argument('--log-prefix', type=str, default='default') # # 日志文件的前缀。不同的前缀可以帮助区分不同的实验。
@@ -44,14 +44,14 @@ def get_args():
     # parser.add_argument(
     #     '--device', type=str, default='cuda' if torch.cuda.is_available() else 'cpu')
     parser.add_argument(
-        '--device', type=str, default='cuda:0')
+        '--device', type=str, default='cuda:7')
     parser.add_argument('--resume-path', type=str, default=None) # 恢复训练的路径。如果提供了一个有效的路径，则从该路径加载预训练的模型继续训练。
     parser.add_argument('--watch', action='store_true', default=False) # 是否进入测试模式。如果设置为 `True`，则只进行测试而不进行训练。
     parser.add_argument('--lr-decay', action='store_true', default=False) # 是否启用学习率衰减。如果设置为 `True`，则在训练过程中逐渐降低学习率。
     parser.add_argument('--note', type=str, default='reward = np.sum(data_rate) --step-per-epoch=100 --step-per-collect=1000，环境不固定') # 备注信息。用于记录实验的一些额外信息。
 
      # for diffusion
-    parser.add_argument('--actor-lr', type=float, default=1e-4) # 演员网络的学习率。
+    parser.add_argument('--actor-lr', type=float, default=1e-5) # 演员网络的学习率。
     parser.add_argument('--critic-lr', type=float, default=1e-4) # 批评家网络的学习率。
     parser.add_argument('--tau', type=float, default=0.005)  # for soft update
     # adjust
@@ -61,11 +61,11 @@ def get_args():
 
     # With Expert: bc-coef True 有专家数据
     # Without Expert: bc-coef False 无专家数据
-    parser.add_argument('--bc-coef', default=True) # Apr-04-132705 
+    parser.add_argument('--bc-coef', default=False) # Apr-04-132705 
     # parser.add_argument('--bc-coef', default=True)
 
     # for prioritized experience replay 优先经验回放
-    parser.add_argument('--prioritized-replay', action='store_true', default=False)
+    parser.add_argument('--prioritized-replay', action='store_true', default=True)
     parser.add_argument('--prior-alpha', type=float, default=0.4)#
     parser.add_argument('--prior-beta', type=float, default=0.4)#
 
